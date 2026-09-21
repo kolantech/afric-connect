@@ -1,0 +1,9 @@
+{
+  "name": "afric-connect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plateforme BTP AFRIC-CONNECT",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
