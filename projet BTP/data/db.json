@@ -1,0 +1,8 @@
+{
+  "users": [],
+  "offers": [
+    {"id":"demo-1","title":"Construction d'une villa familiale","category":"Bâtiment","city":"Abidjan","budget":"18500000","deadline":"12 jours","urgency":"Urgent","description":"Construction complète d'une villa familiale.","status":"approved","ownerId":"demo","applications":[]},
+    {"id":"demo-2","title":"Rénovation de centre de santé","category":"Rénovation","city":"Dakar","budget":"25000000","deadline":"21 jours","urgency":"Moyen","description":"Rénovation et mise aux normes d'un centre de santé.","status":"approved","ownerId":"demo","applications":[]}
+  ],
+  "sessions": []
+}
