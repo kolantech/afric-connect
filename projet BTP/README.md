@@ -1,6 +1,6 @@
 # AFRIC-CONNECT
 
-Prototype fonctionnel d'une marketplace BTP africaine : comptes utilisateurs, sessions, publication d'appels d'offres, candidatures et stockage persistant local.
+Prototype fonctionnel d'une marketplace BTP réservée aux huit pays de l'UEMOA : comptes utilisateurs, sessions, publication d'appels d'offres, candidatures et stockage persistant local.
 
 ## Démarrage
 
@@ -27,3 +27,4 @@ Le serveur est sans dépendance externe. Les données de démonstration et les n
 - Publication d'offres par les clients
 - Candidature des professionnels
 - Pages de confiance, tarifs, FAQ et vérification KYC
+- Accès réservé au Bénin, Burkina Faso, Côte d'Ivoire, Guinée-Bissau, Mali, Niger, Sénégal et Togo
