@@ -7,6 +7,7 @@ const root = __dirname;
 const dbPath = path.join(root, 'data', 'db.json');
 const port = Number(process.env.PORT || 8000);
 const uemoaCountries = new Set(['Bénin', 'Burkina Faso', "Côte d'Ivoire", 'Guinée-Bissau', 'Mali', 'Niger', 'Sénégal', 'Togo']);
+const adminPassword = process.env.ADMIN_PASSWORD;
 const mimeTypes = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg' };
 
 function readDb() { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
@@ -17,6 +18,7 @@ function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
 function validPassword(password, stored) { const [salt, key] = stored.split(':'); return crypto.timingSafeEqual(Buffer.from(key, 'hex'), crypto.scryptSync(password, salt, 64)); }
 function body(req) { return new Promise((resolve, reject) => { let raw = ''; req.on('data', chunk => raw += chunk); req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('JSON invalide')); } }); }); }
 function authUser(req, db) { const token = (req.headers.authorization || '').replace('Bearer ', ''); const session = db.sessions.find(item => item.token === token); return session ? db.users.find(user => user.id === session.userId) : null; }
+function authAdmin(req, db) { const token = (req.headers.authorization || '').replace('Bearer ', ''); return db.sessions.find(item => item.token === token && item.admin === true); }
 function safeUser(user) { return user && { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, role: user.role, verified: user.verified }; }
 function formatOffer(offer) { return { ...offer, budgetLabel: `${Number(offer.budget || 0).toLocaleString('fr-FR')} FCFA`, applicationsCount: offer.applications.length }; }
 
@@ -41,6 +43,25 @@ async function handleApi(req, res, url) {
     if (!user || !data.password || !validPassword(data.password, user.password)) return sendJson(res, 401, { error: 'Email ou mot de passe incorrect.' });
     const token = id(); db.sessions.push({ token, userId: user.id, createdAt: new Date().toISOString() }); writeDb(db);
     return sendJson(res, 200, { token, user: safeUser(user) });
+  }
+  if (req.method === 'POST' && url.pathname === '/api/admin/login') {
+    if (!adminPassword || !data.password || data.password !== adminPassword) return sendJson(res, 401, { error: 'Identifiants administrateur incorrects.' });
+    const token = id(); db.sessions.push({ token, admin: true, createdAt: new Date().toISOString() }); writeDb(db);
+    return sendJson(res, 200, { token, admin: true });
+  }
+  const adminSession = authAdmin(req, db);
+  if (url.pathname.startsWith('/api/admin/')) {
+    if (!adminSession) return sendJson(res, 401, { error: 'Accès administrateur requis.' });
+    if (req.method === 'GET' && url.pathname === '/api/admin/overview') {
+      return sendJson(res, 200, { users: db.users.map(safeUser), offers: db.offers.map(formatOffer), stats: { users: db.users.length, offers: db.offers.length, applications: db.offers.reduce((total, offer) => total + offer.applications.length, 0), pending: db.offers.filter(offer => offer.status === 'pending').length } });
+    }
+    const statusMatch = url.pathname.match(/^\/api\/admin\/offers\/([^/]+)\/status$/);
+    if (req.method === 'POST' && statusMatch) {
+      const offer = db.offers.find(item => item.id === statusMatch[1]);
+      if (!offer || !['approved', 'pending', 'suspended'].includes(data.status)) return sendJson(res, 400, { error: 'Offre ou statut invalide.' });
+      offer.status = data.status; writeDb(db); return sendJson(res, 200, { offer: formatOffer(offer) });
+    }
+    return sendJson(res, 404, { error: 'Route administrateur introuvable.' });
   }
   const user = authUser(req, db);
   if (!user) return sendJson(res, 401, { error: 'Connectez-vous pour continuer.' });
