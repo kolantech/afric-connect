@@ -2,6 +2,7 @@ services:
   - type: web
     name: afric-connect
     runtime: node
+    plan: free
     rootDir: projet BTP
     buildCommand: npm install
     startCommand: node server.js
