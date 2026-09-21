@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const root = __dirname;
 const dbPath = path.join(root, 'data', 'db.json');
 const port = Number(process.env.PORT || 8000);
+const uemoaCountries = new Set(['Bénin', 'Burkina Faso', "Côte d'Ivoire", 'Guinée-Bissau', 'Mali', 'Niger', 'Sénégal', 'Togo']);
 const mimeTypes = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg' };
 
 function readDb() { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
@@ -16,7 +17,7 @@ function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
 function validPassword(password, stored) { const [salt, key] = stored.split(':'); return crypto.timingSafeEqual(Buffer.from(key, 'hex'), crypto.scryptSync(password, salt, 64)); }
 function body(req) { return new Promise((resolve, reject) => { let raw = ''; req.on('data', chunk => raw += chunk); req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('JSON invalide')); } }); }); }
 function authUser(req, db) { const token = (req.headers.authorization || '').replace('Bearer ', ''); const session = db.sessions.find(item => item.token === token); return session ? db.users.find(user => user.id === session.userId) : null; }
-function safeUser(user) { return user && { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, verified: user.verified }; }
+function safeUser(user) { return user && { id: user.id, name: user.name, email: user.email, phone: user.phone, country: user.country, role: user.role, verified: user.verified }; }
 function formatOffer(offer) { return { ...offer, budgetLabel: `${Number(offer.budget || 0).toLocaleString('fr-FR')} FCFA`, applicationsCount: offer.applications.length }; }
 
 async function handleApi(req, res, url) {
@@ -29,9 +30,9 @@ async function handleApi(req, res, url) {
   let data;
   try { data = await body(req); } catch (error) { return sendJson(res, 400, { error: error.message }); }
   if (req.method === 'POST' && url.pathname === '/api/register') {
-    if (!data.name || !data.email || !data.password || data.password.length < 8) return sendJson(res, 400, { error: 'Nom, email et mot de passe de 8 caractères minimum requis.' });
+    if (!data.name || !data.email || !data.password || data.password.length < 8 || !uemoaCountries.has(data.country)) return sendJson(res, 400, { error: 'Nom, pays UEMOA, email et mot de passe de 8 caractères minimum requis.' });
     if (db.users.some(user => user.email.toLowerCase() === data.email.toLowerCase())) return sendJson(res, 409, { error: 'Cet email est déjà utilisé.' });
-    const user = { id: id(), name: data.name.trim(), email: data.email.trim().toLowerCase(), phone: data.phone || '', role: data.role || 'client', password: hashPassword(data.password), verified: false, createdAt: new Date().toISOString() };
+    const user = { id: id(), name: data.name.trim(), email: data.email.trim().toLowerCase(), phone: data.phone || '', country: data.country, role: data.role || 'client', password: hashPassword(data.password), verified: false, createdAt: new Date().toISOString() };
     const token = id(); db.users.push(user); db.sessions.push({ token, userId: user.id, createdAt: new Date().toISOString() }); writeDb(db);
     return sendJson(res, 201, { token, user: safeUser(user) });
   }
